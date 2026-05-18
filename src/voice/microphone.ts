@@ -1,7 +1,9 @@
 import { EventEmitter } from 'events';
+import { execFileSync } from 'child_process';
 import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
+import type { Logger } from '../logger';
 
 interface RecorderModule {
     record(options: RecordOptions): Recording;
@@ -39,16 +41,49 @@ export class Microphone extends EventEmitter {
     private _continuous = false;
     private _stopped = false;
     private readonly silenceThreshold: number;
+    private readonly logger: Logger | undefined;
 
-    constructor(silenceThreshold = 1.5) {
+    constructor(silenceThreshold = 1.5, logger?: Logger) {
         super();
         this.silenceThreshold = silenceThreshold;
+        this.logger = logger;
+    }
+
+    /**
+     * Checks whether SoX is available on PATH.
+     * Returns the resolved path on success, or throws with install instructions.
+     */
+    static checkSox(): string {
+        const cmd = process.platform === 'win32' ? 'where' : 'which';
+        try {
+            return execFileSync(cmd, ['sox'], { encoding: 'utf8' }).trim();
+        } catch {
+            const installHint = process.platform === 'win32'
+                ? 'Windows: choco install sox.portable  OR  scoop install sox'
+                : process.platform === 'darwin'
+                    ? 'macOS: brew install sox'
+                    : 'Linux: sudo apt install sox  OR  sudo dnf install sox';
+            throw new Error(
+                `SoX not found on PATH.\n${installHint}\n` +
+                'After installing, restart VS Code so the new PATH is detected.',
+            );
+        }
     }
 
     /** Start continuous listening — restarts after each utterance until stop() is called. */
     startContinuous(): void {
+        // Pre-flight: verify SoX is available before starting the recording loop.
+        try {
+            const soxPath = Microphone.checkSox();
+            this.logger?.log(`SoX found: ${soxPath}`);
+        } catch (err) {
+            this.emit('error', err instanceof Error ? err : new Error(String(err)));
+            return;
+        }
+
         this._continuous = true;
         this._stopped = false;
+        this.logger?.log('Microphone: starting continuous capture');
         this.captureOnce();
     }
 
@@ -90,6 +125,7 @@ export class Microphone extends EventEmitter {
 
         this.writeStream.on('finish', () => {
             if (!this._stopped) {
+                this.logger?.log(`Microphone: audio ready → ${outputPath}`);
                 this.emit('audioReady', outputPath);
             }
             // Restart immediately for continuous mode
@@ -100,6 +136,7 @@ export class Microphone extends EventEmitter {
     }
 
     stop(): void {
+        this.logger?.log('Microphone: stopped');
         this._stopped = true;
         this._continuous = false;
         this.recording?.stop();
