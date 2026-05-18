@@ -1,4 +1,5 @@
 import * as fs from 'fs';
+import * as path from 'path';
 import type { ISTTEngine } from './ISTTEngine';
 
 /**
@@ -31,9 +32,28 @@ export class WhisperSTT implements ISTTEngine {
             );
         }
 
+        // Pre-check model existence — nodejs-whisper's auto-download is unreliable on Windows
+        // and crashes with an obscure TypeError instead of a useful message.
+        const constants = require('nodejs-whisper/dist/constants') as {
+            WHISPER_CPP_PATH: string;
+            MODEL_OBJECT: Record<string, string>;
+        };
+        const modelFile = constants.MODEL_OBJECT[this.modelName];
+        if (!modelFile) {
+            throw new Error(`Unknown Whisper model: "${this.modelName}"`);
+        }
+        const modelPath = path.join(constants.WHISPER_CPP_PATH, 'models', modelFile);
+        if (!fs.existsSync(modelPath)) {
+            throw new Error(
+                `Whisper model "${this.modelName}" not found.\n` +
+                `Expected: ${modelPath}\n` +
+                `Download it by running in a terminal:\n` +
+                `  npx nodejs-whisper download ${this.modelName}`,
+            );
+        }
+
         await nodewhisper(audioPath, {
             modelName: this.modelName,
-            autoDownloadModelName: this.modelName,
             whisperOptions: {
                 outputInText: true,
                 wordTimestamps: false,
