@@ -13,6 +13,13 @@
                 "kind": "build",
                 "isDefault": true
             }
+        },
+        {
+            "type": "npm",
+            "script": "check-types",
+            "problemMatcher": [],
+            "label": "npm: check-types",
+            "detail": "tsc --noEmit"
         }
     ]
 }
