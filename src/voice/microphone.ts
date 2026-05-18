@@ -15,6 +15,8 @@ interface RecordOptions {
     audioType: string;
     recorder: string;
     silence: string;
+    endOnSilence: boolean;
+    threshold: number;
 }
 
 interface Recording {
@@ -117,6 +119,8 @@ export class Microphone extends EventEmitter {
             audioType: 'wav',
             recorder: 'sox',
             silence: String(this.silenceThreshold),
+            endOnSilence: true,   // sox stops + closes stdout after silence → triggers audioReady
+            threshold: 0.5,       // 0.5% volume threshold to detect silence
         });
 
         const stream = this.recording.stream();
