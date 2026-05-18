@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy"
+          content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grok Mode</title>
+    <style>
+        :root {
+            --mic-on:  #4caf50;
+            --mic-off: #f44336;
+            --accent:  #7c3aed;
+            --surface: var(--vscode-editor-background, #1e1e1e);
+            --fg:      var(--vscode-editor-foreground, #d4d4d4);
+            --border:  var(--vscode-panel-border, #333);
+            --input-bg:var(--vscode-input-background, #2a2a2a);
+            --log-bg:  var(--vscode-terminal-background, #1a1a1a);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--vscode-font-family, 'Segoe UI', sans-serif);
+            font-size: 13px;
+            color: var(--fg);
+            background: var(--surface);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100vh;
+        }
+
+        /* ── Header ── */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        header h1 {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .mic-indicator {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+        }
+
+        .mic-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: var(--mic-off);
+            transition: background 0.3s;
+        }
+
+        .mic-dot.on { background: var(--mic-on); animation: pulse 1.4s infinite; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50%       { opacity: 0.4; }
+        }
+
+        /* ── Planning mode badge ── */
+        .badge {
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            background: var(--accent);
+            color: #fff;
+            display: none;
+        }
+
+        .badge.visible { display: inline-block; }
+
+        /* ── Cards ── */
+        .card {
+            background: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px 10px;
+        }
+
+        .card label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            opacity: 0.6;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .card .value {
+            font-size: 13px;
+            line-height: 1.5;
+            white-space: pre-wrap;
+            word-break: break-word;
+            min-height: 20px;
+        }
+
+        /* ── Response card streams in ── */
+        #response-value { color: var(--vscode-textLink-foreground, #9d7eff); }
+
+        /* ── Log ── */
+        .log-container {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .log-container label {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            opacity: 0.6;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        #log {
+            flex: 1;
+            background: var(--log-bg);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            padding: 8px;
+            overflow-y: auto;
+            font-family: var(--vscode-editor-font-family, monospace);
+            font-size: 11px;
+            line-height: 1.6;
+        }
+
+        #log .entry { opacity: 0.85; }
+        #log .entry:last-child { opacity: 1; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header>
+        <h1>🎤 Grok Mode</h1>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <span class="badge" id="planning-badge">Planning Mode</span>
+            <div class="mic-indicator">
+                <div class="mic-dot" id="mic-dot"></div>
+                <span id="mic-label">Off</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Last spoken command -->
+    <div class="card">
+        <label>Last Command</label>
+        <div class="value" id="command-value">—</div>
+    </div>
+
+    <!-- Copilot response (streams in) -->
+    <div class="card">
+        <label>Copilot Response</label>
+        <div class="value" id="response-value">—</div>
+    </div>
+
+    <!-- Action log -->
+    <div class="log-container">
+        <label>Action Log</label>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        const vscode = acquireVsCodeApi();
+        const micDot    = document.getElementById('mic-dot');
+        const micLabel  = document.getElementById('mic-label');
+        const cmdValue  = document.getElementById('command-value');
+        const respValue = document.getElementById('response-value');
+        const logEl     = document.getElementById('log');
+        const planBadge = document.getElementById('planning-badge');
+
+        window.addEventListener('message', (event) => {
+            const msg = event.data;
+            switch (msg.type) {
+                case 'micStatus':
+                    if (msg.status === 'on') {
+                        micDot.classList.add('on');
+                        micLabel.textContent = 'Listening';
+                    } else {
+                        micDot.classList.remove('on');
+                        micLabel.textContent = 'Off';
+                    }
+                    break;
+
+                case 'lastCommand':
+                    cmdValue.textContent = msg.text || '—';
+                    break;
+
+                case 'lastResponse':
+                    respValue.textContent = msg.text || '—';
+                    break;
+
+                case 'appendResponse':
+                    if (respValue.textContent === '—') { respValue.textContent = ''; }
+                    respValue.textContent += msg.fragment;
+                    break;
+
+                case 'planningMode':
+                    planBadge.classList.toggle('visible', !!msg.enabled);
+                    appendLog(`Planning Mode ${msg.enabled ? 'enabled' : 'disabled'}`);
+                    break;
+
+                case 'log':
+                    appendLog(msg.message);
+                    break;
+            }
+        });
+
+        function appendLog(text) {
+            const entry = document.createElement('div');
+            entry.className = 'entry';
+            entry.textContent = text;
+            logEl.appendChild(entry);
+            logEl.scrollTop = logEl.scrollHeight;
+            // Keep log from growing unbounded
+            while (logEl.children.length > 200) {
+                logEl.removeChild(logEl.firstChild);
+            }
+        }
+    </script>
+</body>
+</html>

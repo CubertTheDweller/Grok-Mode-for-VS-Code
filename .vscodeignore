@@ -1,0 +1,23 @@
+# Exclude TypeScript source and config from the packaged .vsix
+src/**/*.ts
+src/**/*.js
+!src/test/
+tsconfig.json
+esbuild.js
+.eslintrc*
+.github/
+.vscode/
+*.map
+
+# Exclude development dependencies
+node_modules/
+
+# Exclude test output
+out/
+.vscode-test/
+
+# Misc
+.gitignore
+CONTRIBUTING.md
+SECURITY.md
+CHANGELOG.md

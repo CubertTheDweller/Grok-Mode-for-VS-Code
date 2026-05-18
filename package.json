@@ -1,0 +1,113 @@
+{
+  "name": "grok-mode",
+  "displayName": "Grok Mode for VS Code",
+  "description": "Voice-driven, conversational development powered by GitHub Copilot Agents.",
+  "version": "0.0.1",
+  "publisher": "grok-mode",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-username/grok-mode-vscode"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "categories": ["Other"],
+  "keywords": ["voice", "speech", "copilot", "ai", "whisper", "tts", "hands-free"],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "grokMode.start",
+        "title": "Grok Mode: Start",
+        "icon": "$(mic)"
+      },
+      {
+        "command": "grokMode.stop",
+        "title": "Grok Mode: Stop",
+        "icon": "$(mic-filled)"
+      },
+      {
+        "command": "grokMode.togglePlanningMode",
+        "title": "Grok Mode: Toggle Planning Mode",
+        "icon": "$(comment-discussion)"
+      }
+    ],
+    "configuration": {
+      "title": "Grok Mode",
+      "properties": {
+        "grokMode.ttsEngine": {
+          "type": "string",
+          "enum": ["auto", "windows", "macos", "elevenlabs"],
+          "enumDescriptions": [
+            "Automatically select based on platform (Windows SAPI or macOS say)",
+            "Windows Speech API (PowerShell SAPI)",
+            "macOS say command",
+            "ElevenLabs neural TTS (requires API key)"
+          ],
+          "default": "auto",
+          "description": "Text-to-speech engine to use for Copilot voice responses."
+        },
+        "grokMode.elevenLabsApiKey": {
+          "type": "string",
+          "default": "",
+          "description": "ElevenLabs API key for neural TTS. Never commit this to source control — store in user settings only."
+        },
+        "grokMode.elevenLabsVoiceId": {
+          "type": "string",
+          "default": "21m00Tcm4TlvDq8ikWAM",
+          "description": "ElevenLabs voice ID to use. Defaults to Rachel."
+        },
+        "grokMode.whisperModel": {
+          "type": "string",
+          "enum": ["tiny", "tiny.en", "base", "base.en", "small", "small.en", "medium", "medium.en"],
+          "default": "base.en",
+          "description": "Whisper model for speech recognition. Larger models are more accurate but slower."
+        },
+        "grokMode.hotword": {
+          "type": "string",
+          "default": "",
+          "description": "Hotword phrase to filter transcripts (e.g. 'hey copilot'). Leave empty to disable hotword filtering and route all speech."
+        },
+        "grokMode.planningModeEnabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Start with Conversational Planning Mode enabled. Copilot will ask clarifying questions and propose plans before acting."
+        },
+        "grokMode.silenceThreshold": {
+          "type": "number",
+          "default": 1.5,
+          "minimum": 0.5,
+          "maximum": 10,
+          "description": "Seconds of silence before a voice utterance is considered complete and sent for transcription."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "npm run check-types && node esbuild.js",
+    "check-types": "tsc --noEmit",
+    "watch": "npm-run-all -p watch:esbuild watch:tsc",
+    "watch:esbuild": "node esbuild.js --watch",
+    "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
+    "vscode:prepublish": "npm run package",
+    "package": "npm run check-types && node esbuild.js --production",
+    "compile-tests": "tsc -p . --outDir out",
+    "pretest": "npm run compile-tests",
+    "test": "vscode-test"
+  },
+  "dependencies": {
+    "node-record-lpcm16": "^1.0.1",
+    "nodejs-whisper": "^0.2.9"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.90.0",
+    "@vscode/test-cli": "^0.0.10",
+    "@vscode/test-electron": "^2.4.0",
+    "esbuild": "^0.25.0",
+    "npm-run-all": "^4.1.5",
+    "typescript": "^5.4.0"
+  }
+}
