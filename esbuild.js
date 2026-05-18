@@ -32,7 +32,7 @@ async function main() {
         sourcesContent: false,
         platform: 'node',
         outfile: 'dist/extension.js',
-        external: ['vscode'],
+        external: ['vscode', 'node-record-lpcm16', 'nodejs-whisper'],
         logLevel: 'silent',
         plugins: [esbuildProblemMatcherPlugin],
     });
